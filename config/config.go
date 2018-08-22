@@ -1,6 +1,6 @@
 package config
 
-type LedgerStoreConf struct {
+type LedgerConfig struct {
 	PolicyName string
 	DataPath   string
 }

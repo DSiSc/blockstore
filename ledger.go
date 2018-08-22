@@ -19,7 +19,7 @@ type Ledger struct {
 }
 
 // NewLedger return Ledger instance
-func NewLedger(config config.LedgerStoreConf) (*Ledger, error) {
+func NewLedger(config config.LedgerConfig) (*Ledger, error) {
 	ledger := &Ledger{
 		headerIndex: make(map[uint32]types.Hash),
 	}
