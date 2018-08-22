@@ -3,7 +3,7 @@ package ledger
 import (
 	"fmt"
 	"github.com/DSiSc/ledger/config"
-	"github.com/DSiSc/producer/ledger/store"
+	"github.com/DSiSc/ledger/store"
 	types "github.com/DSiSc/txpool/common"
 	"github.com/DSiSc/txpool/common/log"
 	"sync"
