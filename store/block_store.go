@@ -8,7 +8,7 @@ import (
 	producer_c "github.com/DSiSc/producer/common"
 	txpool_c "github.com/DSiSc/txpool/common"
 	"github.com/DSiSc/txpool/common/log"
-	"github.com/DSiSc/txpool/core/types"
+	"github.com/DSiSc/txpool/types"
 )
 
 const (
