@@ -23,7 +23,7 @@ func NewLedger(config config.LedgerConfig) (*Ledger, error) {
 	ledger := &Ledger{
 		headerIndex: make(map[uint32]types.Hash),
 	}
-	storeType := config.PolicyName
+	storeType := config.PluginName
 	dataDir := config.DataPath
 	blockStore, err := store.NewBlockStore(storeType, dataDir)
 	if err != nil {

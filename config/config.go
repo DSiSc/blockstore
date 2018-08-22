@@ -1,6 +1,6 @@
 package config
 
 type LedgerConfig struct {
-	PolicyName string
+	PluginName string
 	DataPath   string
 }
