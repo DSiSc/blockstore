@@ -1,8 +1,8 @@
 package common
 
 import (
-"encoding/binary"
-"io"
+	"encoding/binary"
+	"io"
 )
 
 func WriteUint32(writer io.Writer, val uint32) error {
@@ -54,4 +54,3 @@ func WriteVarBytes(writer io.Writer, value []byte) error {
 	_, err = writer.Write(value)
 	return err
 }
-
