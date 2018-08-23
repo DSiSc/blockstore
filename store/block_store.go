@@ -3,12 +3,10 @@ package store
 import (
 	"bytes"
 	"fmt"
+	"github.com/DSiSc/craft/types"
 	"github.com/DSiSc/ledger/common"
 	"github.com/DSiSc/ledger/store/leveldbstore"
-	producer_c "github.com/DSiSc/producer/common"
-	txpool_c "github.com/DSiSc/txpool/common"
 	"github.com/DSiSc/txpool/common/log"
-	"github.com/DSiSc/txpool/types"
 )
 
 const (
@@ -69,7 +67,7 @@ func (this *BlockStore) putTransaction(tx *types.Transaction, height uint32) err
 	return nil
 }
 
-func (this *BlockStore) getTransactionKey(txHash txpool_c.Hash) []byte {
+func (this *BlockStore) getTransactionKey(txHash types.Hash) []byte {
 	key := bytes.NewBuffer(nil)
 	key.WriteByte(byte(common.DATA_TRANSACTION))
 	txHash.Serialize(key)
@@ -77,7 +75,7 @@ func (this *BlockStore) getTransactionKey(txHash txpool_c.Hash) []byte {
 }
 
 //SaveHeader persist block header to store
-func (this *BlockStore) SaveHeader(block *producer_c.Block, sysFee int64) error {
+func (this *BlockStore) SaveHeader(block *types.Block, sysFee int64) error {
 	blockHash := block.Hash()
 	key := this.getHeaderKey(blockHash)
 	value := bytes.NewBuffer(nil)
@@ -98,7 +96,7 @@ func (this *BlockStore) SaveHeader(block *producer_c.Block, sysFee int64) error 
 	return nil
 }
 
-func (this *BlockStore) getHeaderKey(blockHash txpool_c.Hash) []byte {
+func (this *BlockStore) getHeaderKey(blockHash types.Hash) []byte {
 	data := blockHash.ToArray()
 	key := make([]byte, 1+len(data))
 	key[0] = byte(common.DATA_HEADER)
@@ -107,7 +105,7 @@ func (this *BlockStore) getHeaderKey(blockHash txpool_c.Hash) []byte {
 }
 
 // SaveBlock persist block to store
-func (this *BlockStore) SaveBlock(block *producer_c.Block) error {
+func (this *BlockStore) SaveBlock(block *types.Block) error {
 	blockHeight := block.Header.Height
 	err := this.SaveHeader(block, 0)
 	if err != nil {
