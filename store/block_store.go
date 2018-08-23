@@ -12,9 +12,6 @@ import (
 const (
 	// DB plugin
 	PLUGIN_LEVELDB = "leveldb"
-	// Defaule setting of blcok
-	BLOCK_CONFIG    = "block"
-	DB_STORE_PLUGIN = "block.store"
 )
 
 type DBStore interface {
