@@ -5,7 +5,7 @@ import (
 	"github.com/DSiSc/craft/types"
 	"github.com/DSiSc/ledger/config"
 	"github.com/DSiSc/ledger/store"
-	"github.com/DSiSc/txpool/common/log"
+	"github.com/DSiSc/txpool/log"
 	"sync"
 )
 
