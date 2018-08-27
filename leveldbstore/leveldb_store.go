@@ -9,8 +9,7 @@ import (
 )
 
 type LevelDBStore struct {
-	db    *leveldb.DB
-	batch *leveldb.Batch
+	db *leveldb.DB
 }
 
 // used to compute the size of bloom filter bits array .
@@ -36,8 +35,7 @@ func NewLevelDBStore(file string) (*LevelDBStore, error) {
 	}
 
 	return &LevelDBStore{
-		db:    db,
-		batch: nil,
+		db: db,
 	}, nil
 }
 
@@ -72,9 +70,4 @@ func (self *LevelDBStore) Delete(key []byte) error {
 func (self *LevelDBStore) Close() error {
 	err := self.db.Close()
 	return err
-}
-
-//BatchPut put a key-value pair to leveldb batch
-func (self *LevelDBStore) BatchPut(key []byte, value []byte) {
-	self.batch.Put(key, value)
 }

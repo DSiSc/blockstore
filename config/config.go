@@ -1,6 +1,6 @@
 package config
 
-type LedgerConfig struct {
+type BlockStoreConfig struct {
 	PluginName string
 	DataPath   string
 }
