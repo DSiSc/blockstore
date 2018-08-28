@@ -1,9 +1,9 @@
-# ledger
+# blockstore
 
-An implemention of ledger which support customization by config file.
+An implemention of blockstore which support customization by config file.
 
-[![Build Status](https://circleci.com/gh/DSiSc/ledger/tree/master.svg?style=shield)](https://circleci.com/gh/DSiSc/ledger/tree/master)
-[![codecov](https://codecov.io/gh/DSiSc/ledger/branch/master/graph/badge.svg)](https://codecov.io/gh/DSiSc/ledger)
+[![Build Status](https://circleci.com/gh/DSiSc/blockstore/tree/master.svg?style=shield)](https://circleci.com/gh/DSiSc/blockstore/tree/master)
+[![codecov](https://codecov.io/gh/DSiSc/blockstore/branch/master/graph/badge.svg)](https://codecov.io/gh/DSiSc/blockstore)
 
 ## Getting started
 
