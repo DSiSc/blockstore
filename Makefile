@@ -22,7 +22,7 @@ BUILD_DATE=$(shell date '+%Y-%m-%d-%H:%M:%S')
 default: all
 
 help:
-	@echo 'Management commands for DSiSc/ledger:'
+	@echo 'Management commands for DSiSc/blockstore:'
 	@echo
 	@echo 'Usage:'
 	@echo '    make lint            Check code style.'
@@ -54,9 +54,9 @@ lint:
 static-check: fmt spelling lint
 
 build:
-	@echo "building ledger ${VERSION}"
+	@echo "building blockstore ${VERSION}"
 	@echo "GOPATH=${GOPATH}"
-	go build -v -ldflags "-X github.com/DSiSc/ledger/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X github.com/DSiSc/ledger/version.BuildDate=${BUILD_DATE}" ./...
+	go build -v -ldflags "-X github.com/DSiSc/blockstore/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY} -X github.com/DSiSc/blockstore/version.BuildDate=${BUILD_DATE}" ./...
 
 vet:
 	@echo "Examine source code and reports suspicious constructs..."
