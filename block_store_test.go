@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"github.com/DSiSc/blockstore/config"
+	"github.com/DSiSc/blockstore/util"
 	"github.com/DSiSc/craft/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -9,8 +10,8 @@ import (
 )
 
 var (
-	stateHash = types.HexToHash("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
-	blockHash = types.HexToHash("0xb3f9a62087cbe321e798966883cbc445d9b924a9bbf2e010957a537ea2da7f02")
+	stateHash = util.HexToHash("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	blockHash = util.HexToHash("0xb3f9a62087cbe321e798966883cbc445d9b924a9bbf2e010957a537ea2da7f02")
 )
 
 type MockBlock struct {
@@ -31,6 +32,7 @@ func mockBlock() *types.Block {
 	header := types.Header{
 		Height:    1,
 		StateRoot: stateHash,
+		BlockHash: blockHash,
 	}
 	block := &types.Block{
 		Header: &header,
@@ -80,9 +82,9 @@ func TestBlockStore_GetBlockByHash(t *testing.T) {
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
 
-	blockSaved, err := blockStore.GetBlockByHash(block.Hash())
+	blockSaved, err := blockStore.GetBlockByHash(block.Header.BlockHash)
 	assert.Nil(err)
-	assert.Equal(block.Hash(), blockSaved.Hash())
+	assert.Equal(block.Header.BlockHash, blockSaved.Header.BlockHash)
 }
 
 // test get block by height
@@ -97,7 +99,7 @@ func TestBlockStore_GetBlockByHeight(t *testing.T) {
 
 	blockSaved, err := blockStore.GetBlockByHeight(1)
 	assert.Nil(err)
-	assert.Equal(block.Hash(), blockSaved.Hash())
+	assert.Equal(block.Header.BlockHash, blockSaved.Header.BlockHash)
 }
 
 // test get current block
@@ -111,5 +113,5 @@ func TestBlockStore_GetCurrentBlock(t *testing.T) {
 	assert.Nil(err)
 
 	blockCurrent := blockStore.GetCurrentBlock()
-	assert.Equal(block.Hash(), blockCurrent.Hash())
+	assert.Equal(block.Header.BlockHash, blockCurrent.Header.BlockHash)
 }

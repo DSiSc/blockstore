@@ -7,6 +7,7 @@ import (
 	"github.com/DSiSc/blockstore/config"
 	"github.com/DSiSc/blockstore/leveldbstore"
 	"github.com/DSiSc/blockstore/memorystore"
+	"github.com/DSiSc/blockstore/util"
 	"github.com/DSiSc/craft/types"
 	"github.com/DSiSc/txpool/log"
 	"sync"
@@ -71,7 +72,7 @@ func (blockStore *BlockStore) loadLatestBlock() {
 	}
 
 	// load latest block by hash
-	blockHash := types.BytesToHash(blockHashByte)
+	blockHash := util.BytesToHash(blockHashByte)
 	latestBlock, err := blockStore.GetBlockByHash(blockHash)
 	if err != nil {
 		blockStore.currentBlock.Store(nil)
@@ -83,15 +84,15 @@ func (blockStore *BlockStore) loadLatestBlock() {
 func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 	blockByte, err := encodeBlock(block)
 	if err != nil {
-		return fmt.Errorf("failed to write encode block [%s], as:%s", block.Header.Hash(), err)
+		return fmt.Errorf("failed to write encode block [%s], as:%s", block.Header.BlockHash, err)
 	}
 	// write block
-	err = blockStore.store.Put(block.Hash().Bytes(), blockByte)
+	err = blockStore.store.Put(util.HashToBytes(block.Header.BlockHash), blockByte)
 	if err != nil {
 		return fmt.Errorf("failed to write block to hash")
 	}
 	// write block height and hash mapping
-	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), block.Hash().Bytes())
+	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(block.Header.BlockHash))
 	// record current block
 	blockStore.recordCurrentBlock(block)
 	return err
@@ -99,7 +100,7 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 
 // GetBlockByHash get block by block hash.
 func (blockStore *BlockStore) GetBlockByHash(hash types.Hash) (*types.Block, error) {
-	blockByte, err := blockStore.store.Get(hash.Bytes())
+	blockByte, err := blockStore.store.Get(util.HashToBytes(hash))
 	if blockByte == nil || err != nil {
 		return nil, fmt.Errorf("failed to get block with hash %s, as: %s", hash, err)
 	}
@@ -116,7 +117,7 @@ func (blockStore *BlockStore) GetBlockByHeight(height uint64) (*types.Block, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block with height %d, as: %s", height, err)
 	}
-	blockHash := types.BytesToHash(blockHashByte)
+	blockHash := util.BytesToHash(blockHashByte)
 	return blockStore.GetBlockByHash(blockHash)
 }
 
