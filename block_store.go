@@ -84,15 +84,15 @@ func (blockStore *BlockStore) loadLatestBlock() {
 func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 	blockByte, err := encodeBlock(block)
 	if err != nil {
-		return fmt.Errorf("failed to write encode block [%s], as:%s", block.Header.BlockHash, err)
+		return fmt.Errorf("failed to write encode block [%s], as:%s", block.HeaderHash, err)
 	}
 	// write block
-	err = blockStore.store.Put(util.HashToBytes(block.Header.BlockHash), blockByte)
+	err = blockStore.store.Put(util.HashToBytes(block.HeaderHash), blockByte)
 	if err != nil {
 		return fmt.Errorf("failed to write block to hash")
 	}
 	// write block height and hash mapping
-	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(block.Header.BlockHash))
+	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(block.HeaderHash))
 	// record current block
 	blockStore.recordCurrentBlock(block)
 	return err

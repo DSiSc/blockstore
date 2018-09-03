@@ -32,10 +32,10 @@ func mockBlock() *types.Block {
 	header := types.Header{
 		Height:    1,
 		StateRoot: stateHash,
-		BlockHash: blockHash,
 	}
 	block := &types.Block{
-		Header: &header,
+		Header:     &header,
+		HeaderHash: blockHash,
 	}
 	return block
 }
@@ -82,9 +82,9 @@ func TestBlockStore_GetBlockByHash(t *testing.T) {
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
 
-	blockSaved, err := blockStore.GetBlockByHash(block.Header.BlockHash)
+	blockSaved, err := blockStore.GetBlockByHash(block.HeaderHash)
 	assert.Nil(err)
-	assert.Equal(block.Header.BlockHash, blockSaved.Header.BlockHash)
+	assert.Equal(block.HeaderHash, blockSaved.HeaderHash)
 }
 
 // test get block by height
@@ -99,7 +99,7 @@ func TestBlockStore_GetBlockByHeight(t *testing.T) {
 
 	blockSaved, err := blockStore.GetBlockByHeight(1)
 	assert.Nil(err)
-	assert.Equal(block.Header.BlockHash, blockSaved.Header.BlockHash)
+	assert.Equal(block.HeaderHash, blockSaved.HeaderHash)
 }
 
 // test get current block
@@ -113,5 +113,5 @@ func TestBlockStore_GetCurrentBlock(t *testing.T) {
 	assert.Nil(err)
 
 	blockCurrent := blockStore.GetCurrentBlock()
-	assert.Equal(block.Header.BlockHash, blockCurrent.Header.BlockHash)
+	assert.Equal(block.HeaderHash, blockCurrent.HeaderHash)
 }
