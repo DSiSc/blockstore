@@ -9,7 +9,7 @@ import (
 var testLevelDB *LevelDBStore
 
 func TestMain(m *testing.M) {
-	dbFile := "./test"
+	dbFile := "./testdata"
 	var err error
 	testLevelDB, err = NewLevelDBStore(dbFile)
 	if err != nil {

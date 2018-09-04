@@ -6,6 +6,7 @@ import (
 	"github.com/DSiSc/craft/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ type MockBlock struct {
 func mockBlockStoreConfig() *config.BlockStoreConfig {
 	return &config.BlockStoreConfig{
 		PluginName: PLUGIN_MEMDB,
-		DataPath:   "./",
+		DataPath:   "./testdata",
 	}
 }
 
@@ -59,6 +60,7 @@ func TestBlockStore_createDBStore(t *testing.T) {
 	database, err = createDBStore(config)
 	assert.Nil(err)
 	assert.NotNil(database)
+	os.RemoveAll(config.DataPath)
 }
 
 // test write block
