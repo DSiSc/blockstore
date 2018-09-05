@@ -95,6 +95,9 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 	}
 	// write block height and hash mapping
 	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(blockHash))
+	if err != nil {
+		return fmt.Errorf("failed to record the mapping between block and height")
+	}
 	// record current block
 	blockStore.recordCurrentBlock(block)
 	return err
