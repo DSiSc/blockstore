@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/DSiSc/blockstore/common"
 	"github.com/DSiSc/blockstore/config"
 	"github.com/DSiSc/blockstore/leveldbstore"
 	"github.com/DSiSc/blockstore/memorystore"
@@ -87,12 +88,13 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 		return fmt.Errorf("failed to write encode block [%s], as:%s", block.HeaderHash, err)
 	}
 	// write block
-	err = blockStore.store.Put(util.HashToBytes(block.HeaderHash), blockByte)
+	blockHash := common.BlockHash(block)
+	err = blockStore.store.Put(util.HashToBytes(blockHash), blockByte)
 	if err != nil {
 		return fmt.Errorf("failed to write block to hash")
 	}
 	// write block height and hash mapping
-	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(block.HeaderHash))
+	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(blockHash))
 	// record current block
 	blockStore.recordCurrentBlock(block)
 	return err

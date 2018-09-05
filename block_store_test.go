@@ -1,6 +1,7 @@
 package blockstore
 
 import (
+	"github.com/DSiSc/blockstore/common"
 	"github.com/DSiSc/blockstore/config"
 	"github.com/DSiSc/blockstore/util"
 	"github.com/DSiSc/craft/types"
@@ -84,7 +85,7 @@ func TestBlockStore_GetBlockByHash(t *testing.T) {
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
 
-	blockSaved, err := blockStore.GetBlockByHash(block.HeaderHash)
+	blockSaved, err := blockStore.GetBlockByHash(common.BlockHash(block))
 	assert.Nil(err)
 	assert.Equal(block.HeaderHash, blockSaved.HeaderHash)
 }
