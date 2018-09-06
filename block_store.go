@@ -9,8 +9,8 @@ import (
 	"github.com/DSiSc/blockstore/leveldbstore"
 	"github.com/DSiSc/blockstore/memorystore"
 	"github.com/DSiSc/blockstore/util"
+	"github.com/DSiSc/craft/log"
 	"github.com/DSiSc/craft/types"
-	"github.com/DSiSc/txpool/log"
 	"sync"
 	"sync/atomic"
 )

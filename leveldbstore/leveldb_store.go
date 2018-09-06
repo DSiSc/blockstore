@@ -1,7 +1,7 @@
 package leveldbstore
 
 import (
-	"github.com/DSiSc/txpool/log"
+	"github.com/DSiSc/craft/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
