@@ -42,6 +42,7 @@ type BlockStore struct {
 
 // NewBlockStore return the block store instance
 func NewBlockStore(config *config.BlockStoreConfig) (*BlockStore, error) {
+	log.Info("Start creating block store, with config: %v ", config)
 	store, err := createDBStore(config)
 	if err != nil {
 		return nil, err
@@ -49,6 +50,9 @@ func NewBlockStore(config *config.BlockStoreConfig) (*BlockStore, error) {
 	blockStore := &BlockStore{
 		store: store,
 	}
+
+	//load latest block from database.
+	blockStore.loadLatestBlock()
 	return blockStore, nil
 }
 
@@ -56,8 +60,10 @@ func NewBlockStore(config *config.BlockStoreConfig) (*BlockStore, error) {
 func createDBStore(config *config.BlockStoreConfig) (DBStore, error) {
 	switch config.PluginName {
 	case PLUGIN_LEVELDB:
+		log.Debug("Create file-based block store, with file path: %s ", config.DataPath)
 		return leveldbstore.NewLevelDBStore(config.DataPath)
 	case PLUGIN_MEMDB:
+		log.Debug("Create memory-based block store")
 		return memorystore.NewMemDBStore(), nil
 	default:
 		log.Error("Not support plugin.")
@@ -67,40 +73,52 @@ func createDBStore(config *config.BlockStoreConfig) (DBStore, error) {
 
 // load latest block from database.
 func (blockStore *BlockStore) loadLatestBlock() {
+	log.Info("Start loading block from database")
 	blockHashByte, err := blockStore.store.Get([]byte(latestBlockKey))
 	if err != nil {
-		blockStore.currentBlock.Store(nil)
+		log.Warn("Failed to load latest block hash from database, we will set current block to nil")
+		return
 	}
 
 	// load latest block by hash
 	blockHash := util.BytesToHash(blockHashByte)
 	latestBlock, err := blockStore.GetBlockByHash(blockHash)
 	if err != nil {
-		blockStore.currentBlock.Store(nil)
+		log.Warn("Failed to load the latest block with the hash of the record in the database, we will set current block to nil")
+		return
 	}
 	blockStore.currentBlock.Store(latestBlock)
 }
 
 // WriteBlock write the block to database. return error if write failed.
 func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
+	log.Info("Start writing block %v to database.", block)
 	blockByte, err := encodeBlock(block)
 	if err != nil {
-		return fmt.Errorf("failed to write encode block [%s], as:%s", block.HeaderHash, err)
+		log.Error("Failed to encode block %v to byte, as: %v ", block, err)
+		return fmt.Errorf("Failed to encode block %v to byte, as: %v ", block, err)
 	}
 	// write block
 	blockHash := common.BlockHash(block)
 	err = blockStore.store.Put(util.HashToBytes(blockHash), blockByte)
 	if err != nil {
-		return fmt.Errorf("failed to write block to hash")
+		log.Error("Failed to write block %s to database, as: %v ", blockHash, err)
+		return fmt.Errorf("Failed to write block %s to database, as: %v ", blockHash, err)
 	}
 	// write block height and hash mapping
 	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(blockHash))
 	if err != nil {
-		return fmt.Errorf("failed to record the mapping between block and height")
+		log.Error("Failed to record the mapping between block and height")
+		return fmt.Errorf("Failed to record the mapping between block and height ")
 	}
-	// record current block
+	// update current block
 	blockStore.recordCurrentBlock(block)
-	return err
+	// update latest block
+	err = blockStore.store.Put([]byte(latestBlockKey), util.HashToBytes(blockHash))
+	if err != nil {
+		log.Warn("Failed to record latest block, as: %v. we will still use the previous latest block as current latest block ", err)
+	}
+	return nil
 }
 
 // GetBlockByHash get block by block hash.
@@ -148,6 +166,7 @@ func (blockStore *BlockStore) GetCurrentBlockHeight() uint64 {
 
 // record current block
 func (blockStore *BlockStore) recordCurrentBlock(block *types.Block) {
+	log.Info("Update current block to %v", block)
 	blockStore.currentBlock.Store(block)
 }
 

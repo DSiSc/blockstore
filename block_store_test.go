@@ -118,3 +118,18 @@ func TestBlockStore_GetCurrentBlock(t *testing.T) {
 	blockCurrent := blockStore.GetCurrentBlock()
 	assert.Equal(block.HeaderHash, blockCurrent.HeaderHash)
 }
+
+// test load latest block from database
+func TestBlockStore_LoadLatestBlock(t *testing.T) {
+	assert := assert.New(t)
+	blockStore, err := NewBlockStore(mockBlockStoreConfig())
+	assert.Nil(err)
+	assert.NotNil(blockStore)
+	block := mockBlock()
+	err = blockStore.WriteBlock(block)
+	assert.Nil(err)
+
+	blockStore.recordCurrentBlock(nil)
+	blockStore.loadLatestBlock()
+	assert.Equal(block, blockStore.GetCurrentBlock())
+}
