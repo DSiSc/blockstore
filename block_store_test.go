@@ -7,6 +7,7 @@ import (
 	"github.com/DSiSc/craft/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"math/big"
 	"os"
 	"testing"
 )
@@ -40,6 +41,30 @@ func mockBlock() *types.Block {
 		HeaderHash: blockHash,
 	}
 	return block
+}
+
+// mock block with txs
+func mockBlockWithTx() (*types.Block, types.Transaction) {
+	block := mockBlock()
+	address := util.HexToAddress("")
+	txHash := util.HexToHash("")
+	tx := types.Transaction{
+		Data: types.TxData{
+			AccountNonce: 1,
+			Recipient:    &address,
+			From:         &address,
+			Payload:      nil,
+			Amount:       big.NewInt(100),
+			GasLimit:     0,
+			Price:        big.NewInt(100),
+			V:            big.NewInt(100),
+			R:            big.NewInt(100),
+			S:            big.NewInt(100),
+			Hash:         &txHash,
+		},
+	}
+	block.Transactions = []*types.Transaction{&tx}
+	return block, tx
 }
 
 // test create block store
@@ -132,4 +157,18 @@ func TestBlockStore_LoadLatestBlock(t *testing.T) {
 	blockStore.recordCurrentBlock(nil)
 	blockStore.loadLatestBlock()
 	assert.Equal(block, blockStore.GetCurrentBlock())
+}
+
+// test write tx lookup index
+func TestBlockStore_GetTransactionByHash(t *testing.T) {
+	assert := assert.New(t)
+	blockStore, err := NewBlockStore(mockBlockStoreConfig())
+	assert.Nil(err)
+	assert.NotNil(blockStore)
+	block, tx := mockBlockWithTx()
+	err = blockStore.WriteBlock(block)
+	assert.Nil(err)
+	savedTx, err := blockStore.GetTransactionByHash(*tx.Data.Hash)
+	assert.Nil(err)
+	assert.Equal(tx, *savedTx)
 }

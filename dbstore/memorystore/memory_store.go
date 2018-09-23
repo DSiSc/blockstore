@@ -2,6 +2,7 @@ package memorystore
 
 import (
 	"errors"
+	"github.com/DSiSc/blockstore/dbstore"
 	"sync"
 )
 
@@ -46,6 +47,11 @@ func (db *MemDBStore) Delete(key []byte) error {
 	return nil
 }
 
+//NewBatch create db batch
+func (self *MemDBStore) NewBatch() dbstore.Batch {
+	return &memBatch{db: self, batchCache: make(map[string][]byte)}
+}
+
 // copy byte from sources byte array.
 func copyBytes(b []byte) (copiedBytes []byte) {
 	if b == nil {
@@ -54,4 +60,37 @@ func copyBytes(b []byte) (copiedBytes []byte) {
 	copiedBytes = make([]byte, len(b))
 	copy(copiedBytes, b)
 	return copiedBytes
+}
+
+type memBatch struct {
+	db         *MemDBStore
+	batchCache map[string][]byte
+}
+
+func (b *memBatch) Put(key, value []byte) error {
+	b.batchCache[string(key)] = value
+	return nil
+}
+
+func (b *memBatch) Delete(key []byte) error {
+	delete(b.batchCache, string(key))
+	return nil
+}
+
+func (b *memBatch) Write() error {
+	b.db.lock.Lock()
+	defer b.db.lock.Unlock()
+	for key, value := range b.batchCache {
+		b.db.db[key] = value
+	}
+	b.batchCache = make(map[string][]byte)
+	return nil
+}
+
+func (b *memBatch) ValueSize() int {
+	return len(b.batchCache)
+}
+
+func (b *memBatch) Reset() {
+	b.batchCache = make(map[string][]byte)
 }

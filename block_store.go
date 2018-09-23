@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/DSiSc/blockstore/common"
 	"github.com/DSiSc/blockstore/config"
-	"github.com/DSiSc/blockstore/leveldbstore"
-	"github.com/DSiSc/blockstore/memorystore"
+	"github.com/DSiSc/blockstore/dbstore"
+	"github.com/DSiSc/blockstore/dbstore/leveldbstore"
+	"github.com/DSiSc/blockstore/dbstore/memorystore"
+	"github.com/DSiSc/blockstore/indexes"
 	"github.com/DSiSc/blockstore/util"
 	"github.com/DSiSc/craft/log"
 	"github.com/DSiSc/craft/types"
@@ -26,17 +28,10 @@ const (
 	latestBlockKey = "LatestBlock"
 )
 
-// DBStore represent the low level database to store block
-type DBStore interface {
-	Put(key []byte, value []byte) error
-	Get(key []byte) ([]byte, error)
-	Delete(key []byte) error
-}
-
 // Block store save the data of block & transaction
 type BlockStore struct {
-	store        DBStore      // Block store handler
-	currentBlock atomic.Value //Current block
+	store        dbstore.DBStore // Block store handler
+	currentBlock atomic.Value    //Current block
 	lock         sync.RWMutex
 }
 
@@ -57,7 +52,7 @@ func NewBlockStore(config *config.BlockStoreConfig) (*BlockStore, error) {
 }
 
 // init db store.
-func createDBStore(config *config.BlockStoreConfig) (DBStore, error) {
+func createDBStore(config *config.BlockStoreConfig) (dbstore.DBStore, error) {
 	switch config.PluginName {
 	case PLUGIN_LEVELDB:
 		log.Debug("Create file-based block store, with file path: %s ", config.DataPath)
@@ -93,11 +88,12 @@ func (blockStore *BlockStore) loadLatestBlock() {
 // WriteBlock write the block to database. return error if write failed.
 func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 	log.Info("Start writing block %v to database.", block)
-	blockByte, err := encodeBlock(block)
+	blockByte, err := encodeEntity(block)
 	if err != nil {
 		log.Error("Failed to encode block %v to byte, as: %v ", block, err)
 		return fmt.Errorf("Failed to encode block %v to byte, as: %v ", block, err)
 	}
+
 	// write block
 	blockHash := common.BlockHash(block)
 	err = blockStore.store.Put(util.HashToBytes(blockHash), blockByte)
@@ -105,12 +101,21 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 		log.Error("Failed to write block %s to database, as: %v ", blockHash, err)
 		return fmt.Errorf("Failed to write block %s to database, as: %v ", blockHash, err)
 	}
+
 	// write block height and hash mapping
 	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(blockHash))
 	if err != nil {
 		log.Error("Failed to record the mapping between block and height")
 		return fmt.Errorf("Failed to record the mapping between block and height ")
 	}
+
+	// write tx lookup index
+	err = blockStore.writeTxLookUpIndex(blockHash, block.Transactions)
+	if err != nil {
+		log.Error("Failed to record the tx lookup index from block %v", block)
+		return fmt.Errorf("Failed to record the tx lookup index from block %v ", block)
+	}
+
 	// update current block
 	blockStore.recordCurrentBlock(block)
 	// update latest block
@@ -125,20 +130,21 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 func (blockStore *BlockStore) GetBlockByHash(hash types.Hash) (*types.Block, error) {
 	blockByte, err := blockStore.store.Get(util.HashToBytes(hash))
 	if blockByte == nil || err != nil {
-		return nil, fmt.Errorf("failed to get block with hash %s, as: %s", hash, err)
+		return nil, fmt.Errorf("failed to get block with hash %s, as: %v", hash, err)
 	}
-	block, err := decodeBlock(blockByte)
+	var block types.Block
+	err = decodeEntity(blockByte, &block)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode block with hash %s from database as: %s", hash, err)
+		return nil, fmt.Errorf("failed to decode block with hash %s from database as: %v", hash, err)
 	}
-	return block, nil
+	return &block, nil
 }
 
 // GetBlockByHeight get block by height.
 func (blockStore *BlockStore) GetBlockByHeight(height uint64) (*types.Block, error) {
 	blockHashByte, err := blockStore.store.Get(encodeBlockHeight(height))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get block with height %d, as: %s", height, err)
+		return nil, fmt.Errorf("failed to get block with height %d, as: %v", height, err)
 	}
 	blockHash := util.BytesToHash(blockHashByte)
 	return blockStore.GetBlockByHash(blockHash)
@@ -164,6 +170,56 @@ func (blockStore *BlockStore) GetCurrentBlockHeight() uint64 {
 	}
 }
 
+// GetTransactionByHash get transaction by hash
+func (blockStore *BlockStore) GetTransactionByHash(hash types.Hash) (*types.Transaction, error) {
+	// read tx look up indexs
+	txLookupIntexByte, err := blockStore.store.Get(util.HashToBytes(hash))
+	if txLookupIntexByte == nil || err != nil {
+		return nil, fmt.Errorf("failed to get tx lookup index with hash %s, as: %v", hash, err)
+	}
+	var txLookupIntex indexes.EntityLookupIndex
+	err = decodeEntity(txLookupIntexByte, &txLookupIntex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
+	}
+
+	// read block include this tx
+	block, err := blockStore.GetBlockByHash(txLookupIntex.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+	return block.Transactions[txLookupIntex.Index], nil
+}
+
+// stores a positional metadata for every transaction from a block
+func (blockStore *BlockStore) writeTxLookUpIndex(blockHash types.Hash, txs []*types.Transaction) error {
+	batch := blockStore.store.NewBatch()
+	for i, tx := range txs {
+		index := indexes.EntityLookupIndex{
+			BlockHash: blockHash,
+			Index:     uint64(i),
+		}
+		indexByte, err := encodeEntity(index)
+		if err != nil {
+			batch.Reset()
+			log.Error("Failed to encode tx lookup index %d to byte, as: %v ", index, err)
+			return fmt.Errorf("Failed to tx lookup index %d to byte, as: %v ", index, err)
+		}
+		err = batch.Put(util.HashToBytes(*tx.Data.Hash), indexByte)
+		if err != nil {
+			batch.Reset()
+			log.Error("Failed to store tx lookup index %d to database, as: %v ", index, err)
+			return fmt.Errorf("Failed to store tx lookup index %d to database, as: %v ", index, err)
+		}
+		//check whether the batch size over the max batch size
+		if batch.ValueSize() >= dbstore.MaxBatchSize {
+			batch.Write()
+		}
+	}
+	batch.Write()
+	return nil
+}
+
 // record current block
 func (blockStore *BlockStore) recordCurrentBlock(block *types.Block) {
 	log.Info("Update current block to %v", block)
@@ -177,18 +233,12 @@ func encodeBlockHeight(height uint64) []byte {
 	return enc
 }
 
-// encode block to byte
-func encodeBlock(block *types.Block) ([]byte, error) {
+// encode entity to byte
+func encodeEntity(block interface{}) ([]byte, error) {
 	return json.Marshal(block)
 }
 
 // decode block from byte
-func decodeBlock(blockByte []byte) (*types.Block, error) {
-	var block = &types.Block{}
-	err := json.Unmarshal(blockByte, block)
-	if err != nil {
-		return nil, err
-	} else {
-		return block, nil
-	}
+func decodeEntity(blockByte []byte, entityType interface{}) error {
+	return json.Unmarshal(blockByte, entityType)
 }

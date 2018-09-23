@@ -1,6 +1,7 @@
 package leveldbstore
 
 import (
+	"github.com/DSiSc/blockstore/dbstore"
 	"github.com/DSiSc/craft/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -66,8 +67,44 @@ func (self *LevelDBStore) Delete(key []byte) error {
 	return self.db.Delete(key, nil)
 }
 
+//NewBatch create db batch
+func (self *LevelDBStore) NewBatch() dbstore.Batch {
+	return &ldbBatch{db: self.db, b: new(leveldb.Batch)}
+}
+
 // Close leveldb
 func (self *LevelDBStore) Close() error {
 	err := self.db.Close()
 	return err
+}
+
+type ldbBatch struct {
+	db   *leveldb.DB
+	b    *leveldb.Batch
+	size int
+}
+
+func (b *ldbBatch) Put(key, value []byte) error {
+	b.b.Put(key, value)
+	b.size += 1
+	return nil
+}
+
+func (b *ldbBatch) Delete(key []byte) error {
+	b.b.Delete(key)
+	b.size -= 1
+	return nil
+}
+
+func (b *ldbBatch) Write() error {
+	return b.db.Write(b.b, nil)
+}
+
+func (b *ldbBatch) ValueSize() int {
+	return b.size
+}
+
+func (b *ldbBatch) Reset() {
+	b.b.Reset()
+	b.size = 0
 }
