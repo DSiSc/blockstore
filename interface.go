@@ -21,4 +21,13 @@ type BlockStoreAPI interface {
 
 	// GetCurrentBlockHeight get current block height.
 	GetCurrentBlockHeight() uint64
+
+	// GetTransactionByHash get transaction by hash
+	GetTransactionByHash(hash types.Hash) (*types.Transaction, error)
+
+	// WriteBlock write the block and relative receipts to database. return error if write failed.
+	WriteBlockWithReceipts(block *types.Block, receipts []*types.Receipt) error
+
+	// GetReceiptByHash get receipt by relative tx's hash
+	GetReceiptByTxHash(txHash types.Hash) (*types.Receipt, error)
 }

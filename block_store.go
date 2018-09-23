@@ -28,6 +28,14 @@ const (
 	latestBlockKey = "LatestBlock"
 )
 
+// The fields below define the low level database schema prefixing.
+var (
+	blockPrefix       = []byte("b")
+	blockHeightPrefix = []byte("h")
+	txPrefix          = []byte("t")
+	receiptPrefix     = []byte("r")
+)
+
 // Block store save the data of block & transaction
 type BlockStore struct {
 	store        dbstore.DBStore // Block store handler
@@ -87,30 +95,41 @@ func (blockStore *BlockStore) loadLatestBlock() {
 
 // WriteBlock write the block to database. return error if write failed.
 func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
+	batch := blockStore.store.NewBatch()
+	err := blockStore.writeBlockByBatch(batch, block)
+	if err != nil {
+		batch.Reset()
+		return err
+	}
+	batch.Write()
+	return nil
+}
+
+// WriteBlock write the block to database. return error if write failed.
+func (blockStore *BlockStore) writeBlockByBatch(batch dbstore.Batch, block *types.Block) error {
+	// write block
 	log.Info("Start writing block %v to database.", block)
 	blockByte, err := encodeEntity(block)
 	if err != nil {
 		log.Error("Failed to encode block %v to byte, as: %v ", block, err)
 		return fmt.Errorf("Failed to encode block %v to byte, as: %v ", block, err)
 	}
-
-	// write block
 	blockHash := common.BlockHash(block)
-	err = blockStore.store.Put(util.HashToBytes(blockHash), blockByte)
+	err = batch.Put(append(blockPrefix, util.HashToBytes(blockHash)...), blockByte)
 	if err != nil {
 		log.Error("Failed to write block %s to database, as: %v ", blockHash, err)
 		return fmt.Errorf("Failed to write block %s to database, as: %v ", blockHash, err)
 	}
 
 	// write block height and hash mapping
-	err = blockStore.store.Put(encodeBlockHeight(block.Header.Height), util.HashToBytes(blockHash))
+	err = batch.Put(append(blockHeightPrefix, encodeBlockHeight(block.Header.Height)...), util.HashToBytes(blockHash))
 	if err != nil {
 		log.Error("Failed to record the mapping between block and height")
 		return fmt.Errorf("Failed to record the mapping between block and height ")
 	}
 
 	// write tx lookup index
-	err = blockStore.writeTxLookUpIndex(blockHash, block.Transactions)
+	err = blockStore.writeTxLookUpIndex(batch, blockHash, block.Transactions)
 	if err != nil {
 		log.Error("Failed to record the tx lookup index from block %v", block)
 		return fmt.Errorf("Failed to record the tx lookup index from block %v ", block)
@@ -118,17 +137,37 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 
 	// update current block
 	blockStore.recordCurrentBlock(block)
+
 	// update latest block
-	err = blockStore.store.Put([]byte(latestBlockKey), util.HashToBytes(blockHash))
+	err = batch.Put([]byte(latestBlockKey), util.HashToBytes(blockHash))
 	if err != nil {
 		log.Warn("Failed to record latest block, as: %v. we will still use the previous latest block as current latest block ", err)
 	}
 	return nil
 }
 
+// WriteBlock write the block and relative receipts to database. return error if write failed.
+func (blockStore *BlockStore) WriteBlockWithReceipts(block *types.Block, receipts []*types.Receipt) error {
+	batch := blockStore.store.NewBatch()
+	receiptsByte, err := encodeEntity(receipts)
+	if err != nil {
+		log.Error("Failed to encode receipts %v to byte, as: %v ", block, err)
+		return fmt.Errorf("Failed to encode receipts %v to byte, as: %v ", block, err)
+	}
+	blockHash := common.BlockHash(block)
+	batch.Put(append(receiptPrefix, util.HashToBytes(blockHash)...), receiptsByte)
+	blockStore.writeBlockByBatch(batch, block)
+	if err != nil {
+		batch.Reset()
+		return err
+	}
+	batch.Write()
+	return nil
+}
+
 // GetBlockByHash get block by block hash.
 func (blockStore *BlockStore) GetBlockByHash(hash types.Hash) (*types.Block, error) {
-	blockByte, err := blockStore.store.Get(util.HashToBytes(hash))
+	blockByte, err := blockStore.store.Get(append(blockPrefix, util.HashToBytes(hash)...))
 	if blockByte == nil || err != nil {
 		return nil, fmt.Errorf("failed to get block with hash %s, as: %v", hash, err)
 	}
@@ -142,7 +181,7 @@ func (blockStore *BlockStore) GetBlockByHash(hash types.Hash) (*types.Block, err
 
 // GetBlockByHeight get block by height.
 func (blockStore *BlockStore) GetBlockByHeight(height uint64) (*types.Block, error) {
-	blockHashByte, err := blockStore.store.Get(encodeBlockHeight(height))
+	blockHashByte, err := blockStore.store.Get(append(blockHeightPrefix, encodeBlockHeight(height)...))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block with height %d, as: %v", height, err)
 	}
@@ -173,13 +212,9 @@ func (blockStore *BlockStore) GetCurrentBlockHeight() uint64 {
 // GetTransactionByHash get transaction by hash
 func (blockStore *BlockStore) GetTransactionByHash(hash types.Hash) (*types.Transaction, error) {
 	// read tx look up indexs
-	txLookupIntexByte, err := blockStore.store.Get(util.HashToBytes(hash))
-	if txLookupIntexByte == nil || err != nil {
-		return nil, fmt.Errorf("failed to get tx lookup index with hash %s, as: %v", hash, err)
-	}
-	var txLookupIntex indexes.EntityLookupIndex
-	err = decodeEntity(txLookupIntexByte, &txLookupIntex)
+	txLookupIntex, err := blockStore.getEntityLookUpIndex(hash)
 	if err != nil {
+		log.Error("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
 		return nil, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
 	}
 
@@ -191,9 +226,45 @@ func (blockStore *BlockStore) GetTransactionByHash(hash types.Hash) (*types.Tran
 	return block.Transactions[txLookupIntex.Index], nil
 }
 
+// GetReceiptByHash get receipt by relative tx's hash
+func (blockStore *BlockStore) GetReceiptByTxHash(txHash types.Hash) (*types.Receipt, error) {
+	// read tx look up indexs
+	txLookupIntex, err := blockStore.getEntityLookUpIndex(txHash)
+	if err != nil {
+		log.Error("failed to get tx lookup index with hash %s from database as: %v", txHash, err)
+		return nil, fmt.Errorf("failed get tx lookup index with hash %s from database as: %v", txHash, err)
+	}
+	receiptsByte, err := blockStore.store.Get(append(receiptPrefix, util.HashToBytes(txLookupIntex.BlockHash)...))
+	if err != nil {
+		log.Error("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
+		return nil, fmt.Errorf("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
+	}
+	var receipts []*types.Receipt
+	err = decodeEntity(receiptsByte, &receipts)
+	if err != nil {
+		log.Error("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
+		return nil, fmt.Errorf("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
+	}
+	return receipts[txLookupIntex.Index], nil
+}
+
+// getEntityLookUpIndex get look up index entity by hash
+func (blockStore *BlockStore) getEntityLookUpIndex(txHash types.Hash) (*indexes.EntityLookupIndex, error) {
+	// read tx look up indexs
+	txLookupIntexByte, err := blockStore.store.Get(append(txPrefix, util.HashToBytes(txHash)...))
+	if txLookupIntexByte == nil || err != nil {
+		return nil, fmt.Errorf("failed to get tx lookup index with hash %s, as: %v", txHash, err)
+	}
+	var txLookupIntex indexes.EntityLookupIndex
+	err = decodeEntity(txLookupIntexByte, &txLookupIntex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", txHash, err)
+	}
+	return &txLookupIntex, nil
+}
+
 // stores a positional metadata for every transaction from a block
-func (blockStore *BlockStore) writeTxLookUpIndex(blockHash types.Hash, txs []*types.Transaction) error {
-	batch := blockStore.store.NewBatch()
+func (blockStore *BlockStore) writeTxLookUpIndex(batch dbstore.Batch, blockHash types.Hash, txs []*types.Transaction) error {
 	for i, tx := range txs {
 		index := indexes.EntityLookupIndex{
 			BlockHash: blockHash,
@@ -201,13 +272,11 @@ func (blockStore *BlockStore) writeTxLookUpIndex(blockHash types.Hash, txs []*ty
 		}
 		indexByte, err := encodeEntity(index)
 		if err != nil {
-			batch.Reset()
 			log.Error("Failed to encode tx lookup index %d to byte, as: %v ", index, err)
 			return fmt.Errorf("Failed to tx lookup index %d to byte, as: %v ", index, err)
 		}
-		err = batch.Put(util.HashToBytes(*tx.Data.Hash), indexByte)
+		err = batch.Put(append(txPrefix, util.HashToBytes(*tx.Data.Hash)...), indexByte)
 		if err != nil {
-			batch.Reset()
 			log.Error("Failed to store tx lookup index %d to database, as: %v ", index, err)
 			return fmt.Errorf("Failed to store tx lookup index %d to database, as: %v ", index, err)
 		}
@@ -216,7 +285,6 @@ func (blockStore *BlockStore) writeTxLookUpIndex(blockHash types.Hash, txs []*ty
 			batch.Write()
 		}
 	}
-	batch.Write()
 	return nil
 }
 

@@ -67,6 +67,14 @@ func mockBlockWithTx() (*types.Block, types.Transaction) {
 	return block, tx
 }
 
+// mock receipts
+func mockReceipts() []*types.Receipt {
+	receipt := types.Receipt{
+		Status: 1,
+	}
+	return []*types.Receipt{&receipt}
+}
+
 // test create block store
 func TestNewBlockStore(t *testing.T) {
 	assert := assert.New(t)
@@ -171,4 +179,30 @@ func TestBlockStore_GetTransactionByHash(t *testing.T) {
 	savedTx, err := blockStore.GetTransactionByHash(*tx.Data.Hash)
 	assert.Nil(err)
 	assert.Equal(tx, *savedTx)
+}
+
+// test write block with relative receipts
+func TestBlockStore_WriteBlockWithReceipts(t *testing.T) {
+	assert := assert.New(t)
+	blockStore, err := NewBlockStore(mockBlockStoreConfig())
+	assert.Nil(err)
+	assert.NotNil(blockStore)
+	block := mockBlock()
+	receipts := mockReceipts()
+	assert.Nil(blockStore.WriteBlockWithReceipts(block, receipts))
+}
+
+// test get receipts by tx's hash
+func TestBlockStore_GetReceiptByTxHash(t *testing.T) {
+	assert := assert.New(t)
+	blockStore, err := NewBlockStore(mockBlockStoreConfig())
+	assert.Nil(err)
+	assert.NotNil(blockStore)
+	block, _ := mockBlockWithTx()
+	receipts := mockReceipts()
+	assert.Nil(blockStore.WriteBlockWithReceipts(block, receipts))
+	txHash := block.Transactions[0].Data.Hash
+	receipt, err := blockStore.GetReceiptByTxHash(*txHash)
+	assert.Nil(err)
+	assert.Equal(receipts[0], receipt)
 }
