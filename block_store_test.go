@@ -176,7 +176,7 @@ func TestBlockStore_GetTransactionByHash(t *testing.T) {
 	block, tx := mockBlockWithTx()
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
-	savedTx, err := blockStore.GetTransactionByHash(*tx.Data.Hash)
+	savedTx, _, _, _, err := blockStore.GetTransactionByHash(*tx.Data.Hash)
 	assert.Nil(err)
 	assert.Equal(tx, *savedTx)
 }
@@ -202,7 +202,7 @@ func TestBlockStore_GetReceiptByTxHash(t *testing.T) {
 	receipts := mockReceipts()
 	assert.Nil(blockStore.WriteBlockWithReceipts(block, receipts))
 	txHash := block.Transactions[0].Data.Hash
-	receipt, err := blockStore.GetReceiptByTxHash(*txHash)
+	receipt, _, _, _, err := blockStore.GetReceiptByTxHash(*txHash)
 	assert.Nil(err)
 	assert.Equal(receipts[0], receipt)
 }

@@ -129,7 +129,7 @@ func (blockStore *BlockStore) writeBlockByBatch(batch dbstore.Batch, block *type
 	}
 
 	// write tx lookup index
-	err = blockStore.writeTxLookUpIndex(batch, blockHash, block.Transactions)
+	err = blockStore.writeTxLookUpIndex(batch, blockHash, block.Header.Height, block.Transactions)
 	if err != nil {
 		log.Error("Failed to record the tx lookup index from block %v", block)
 		return fmt.Errorf("Failed to record the tx lookup index from block %v ", block)
@@ -210,42 +210,42 @@ func (blockStore *BlockStore) GetCurrentBlockHeight() uint64 {
 }
 
 // GetTransactionByHash get transaction by hash
-func (blockStore *BlockStore) GetTransactionByHash(hash types.Hash) (*types.Transaction, error) {
+func (blockStore *BlockStore) GetTransactionByHash(hash types.Hash) (*types.Transaction, types.Hash, uint64, uint64, error) {
 	// read tx look up indexs
 	txLookupIntex, err := blockStore.getEntityLookUpIndex(hash)
 	if err != nil {
 		log.Error("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
-		return nil, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
 	}
 
 	// read block include this tx
 	block, err := blockStore.GetBlockByHash(txLookupIntex.BlockHash)
 	if err != nil {
-		return nil, err
+		return nil, types.Hash{}, 0, 0, err
 	}
-	return block.Transactions[txLookupIntex.Index], nil
+	return block.Transactions[txLookupIntex.Index], txLookupIntex.BlockHash, txLookupIntex.BlockHeight, txLookupIntex.Index, nil
 }
 
 // GetReceiptByHash get receipt by relative tx's hash
-func (blockStore *BlockStore) GetReceiptByTxHash(txHash types.Hash) (*types.Receipt, error) {
+func (blockStore *BlockStore) GetReceiptByTxHash(txHash types.Hash) (*types.Receipt, types.Hash, uint64, uint64, error) {
 	// read tx look up indexs
 	txLookupIntex, err := blockStore.getEntityLookUpIndex(txHash)
 	if err != nil {
 		log.Error("failed to get tx lookup index with hash %s from database as: %v", txHash, err)
-		return nil, fmt.Errorf("failed get tx lookup index with hash %s from database as: %v", txHash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed get tx lookup index with hash %s from database as: %v", txHash, err)
 	}
 	receiptsByte, err := blockStore.store.Get(append(receiptPrefix, util.HashToBytes(txLookupIntex.BlockHash)...))
 	if err != nil {
 		log.Error("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
-		return nil, fmt.Errorf("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
 	}
 	var receipts []*types.Receipt
 	err = decodeEntity(receiptsByte, &receipts)
 	if err != nil {
 		log.Error("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
-		return nil, fmt.Errorf("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
 	}
-	return receipts[txLookupIntex.Index], nil
+	return receipts[txLookupIntex.Index], txLookupIntex.BlockHash, txLookupIntex.BlockHeight, txLookupIntex.Index, nil
 }
 
 // getEntityLookUpIndex get look up index entity by hash
@@ -264,11 +264,12 @@ func (blockStore *BlockStore) getEntityLookUpIndex(txHash types.Hash) (*indexes.
 }
 
 // stores a positional metadata for every transaction from a block
-func (blockStore *BlockStore) writeTxLookUpIndex(batch dbstore.Batch, blockHash types.Hash, txs []*types.Transaction) error {
+func (blockStore *BlockStore) writeTxLookUpIndex(batch dbstore.Batch, blockHash types.Hash, blockHeight uint64, txs []*types.Transaction) error {
 	for i, tx := range txs {
 		index := indexes.EntityLookupIndex{
-			BlockHash: blockHash,
-			Index:     uint64(i),
+			BlockHash:   blockHash,
+			BlockHeight: blockHeight,
+			Index:       uint64(i),
 		}
 		indexByte, err := encodeEntity(index)
 		if err != nil {
