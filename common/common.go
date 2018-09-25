@@ -17,7 +17,7 @@ const (
 
 // BlockHash calculate block's hash
 func BlockHash(block *types.Block) (hash types.Hash) {
-	jsonByte, _ := json.Marshal(block)
+	jsonByte, _ := json.Marshal(block.Header)
 	sumByte := Sum(jsonByte)
 	copy(hash[:], sumByte)
 	return
