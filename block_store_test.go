@@ -118,7 +118,7 @@ func TestBlockStore_GetBlockByHash(t *testing.T) {
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
 
-	blockSaved, err := blockStore.GetBlockByHash(common.BlockHash(block))
+	blockSaved, err := blockStore.GetBlockByHash(common.HeaderHash(block))
 	assert.Nil(err)
 	assert.Equal(block.HeaderHash, blockSaved.HeaderHash)
 }

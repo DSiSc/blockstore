@@ -114,7 +114,7 @@ func (blockStore *BlockStore) writeBlockByBatch(batch dbstore.Batch, block *type
 		log.Error("Failed to encode block %v to byte, as: %v ", block, err)
 		return fmt.Errorf("Failed to encode block %v to byte, as: %v ", block, err)
 	}
-	blockHash := common.BlockHash(block)
+	blockHash := common.HeaderHash(block)
 	err = batch.Put(append(blockPrefix, util.HashToBytes(blockHash)...), blockByte)
 	if err != nil {
 		log.Error("Failed to write block %s to database, as: %v ", blockHash, err)
@@ -154,7 +154,7 @@ func (blockStore *BlockStore) WriteBlockWithReceipts(block *types.Block, receipt
 		log.Error("Failed to encode receipts %v to byte, as: %v ", block, err)
 		return fmt.Errorf("Failed to encode receipts %v to byte, as: %v ", block, err)
 	}
-	blockHash := common.BlockHash(block)
+	blockHash := common.HeaderHash(block)
 	batch.Put(append(receiptPrefix, util.HashToBytes(blockHash)...), receiptsByte)
 	blockStore.writeBlockByBatch(batch, block)
 	if err != nil {

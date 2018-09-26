@@ -15,8 +15,8 @@ const (
 	DATA_TRANSACTION                 = 0x02 //Transction hash = > transaction key prefix
 )
 
-// BlockHash calculate block's hash
-func BlockHash(block *types.Block) (hash types.Hash) {
+// HeaderHash calculate block's hash
+func HeaderHash(block *types.Block) (hash types.Hash) {
 	jsonByte, _ := json.Marshal(block.Header)
 	sumByte := Sum(jsonByte)
 	copy(hash[:], sumByte)
