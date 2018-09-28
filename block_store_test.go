@@ -3,7 +3,6 @@ package blockstore
 import (
 	"github.com/DSiSc/blockstore/common"
 	"github.com/DSiSc/blockstore/config"
-	"github.com/DSiSc/blockstore/util"
 	"github.com/DSiSc/craft/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -13,8 +12,8 @@ import (
 )
 
 var (
-	stateHash = util.HexToHash("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
-	blockHash = util.HexToHash("0xb3f9a62087cbe321e798966883cbc445d9b924a9bbf2e010957a537ea2da7f02")
+	stateHash = common.HexToHash("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	blockHash = common.HexToHash("0xb3f9a62087cbe321e798966883cbc445d9b924a9bbf2e010957a537ea2da7f02")
 )
 
 type MockBlock struct {
@@ -46,8 +45,8 @@ func mockBlock() *types.Block {
 // mock block with txs
 func mockBlockWithTx() (*types.Block, types.Transaction) {
 	block := mockBlock()
-	address := util.HexToAddress("")
-	txHash := util.HexToHash("")
+	address := common.HexToAddress("")
+	txHash := common.HexToHash("")
 	tx := types.Transaction{
 		Data: types.TxData{
 			AccountNonce: 1,
@@ -176,7 +175,7 @@ func TestBlockStore_GetTransactionByHash(t *testing.T) {
 	block, tx := mockBlockWithTx()
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
-	savedTx, _, _, _, err := blockStore.GetTransactionByHash(*tx.Data.Hash)
+	savedTx, _, _, _, err := blockStore.GetTransactionByHash(common.TxHash(&tx))
 	assert.Nil(err)
 	assert.Equal(tx, *savedTx)
 }
@@ -201,8 +200,8 @@ func TestBlockStore_GetReceiptByTxHash(t *testing.T) {
 	block, _ := mockBlockWithTx()
 	receipts := mockReceipts()
 	assert.Nil(blockStore.WriteBlockWithReceipts(block, receipts))
-	txHash := block.Transactions[0].Data.Hash
-	receipt, _, _, _, err := blockStore.GetReceiptByTxHash(*txHash)
+	txHash := common.TxHash(block.Transactions[0])
+	receipt, _, _, _, err := blockStore.GetReceiptByTxHash(txHash)
 	assert.Nil(err)
 	assert.Equal(receipts[0], receipt)
 }
