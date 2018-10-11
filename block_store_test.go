@@ -177,6 +177,7 @@ func TestBlockStore_GetTransactionByHash(t *testing.T) {
 	assert.Nil(err)
 	savedTx, _, _, _, err := blockStore.GetTransactionByHash(common.TxHash(&tx))
 	assert.Nil(err)
+	common.TxHash(savedTx)
 	assert.Equal(tx, *savedTx)
 }
 

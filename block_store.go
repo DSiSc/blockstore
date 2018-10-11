@@ -116,8 +116,8 @@ func (blockStore *BlockStore) writeBlockByBatch(batch dbstore.Batch, block *type
 	blockHash := common.HeaderHash(block)
 	err = batch.Put(append(blockPrefix, common.HashToBytes(blockHash)...), blockByte)
 	if err != nil {
-		log.Error("Failed to write block %s to database, as: %v ", blockHash, err)
-		return fmt.Errorf("Failed to write block %s to database, as: %v ", blockHash, err)
+		log.Error("Failed to write block %v to database, as: %v ", blockHash, err)
+		return fmt.Errorf("Failed to write block %v to database, as: %v ", blockHash, err)
 	}
 
 	// write block height and hash mapping
@@ -168,12 +168,12 @@ func (blockStore *BlockStore) WriteBlockWithReceipts(block *types.Block, receipt
 func (blockStore *BlockStore) GetBlockByHash(hash types.Hash) (*types.Block, error) {
 	blockByte, err := blockStore.store.Get(append(blockPrefix, common.HashToBytes(hash)...))
 	if blockByte == nil || err != nil {
-		return nil, fmt.Errorf("failed to get block with hash %s, as: %v", hash, err)
+		return nil, fmt.Errorf("failed to get block with hash %v, as: %v", hash, err)
 	}
 	var block types.Block
 	err = decodeEntity(blockByte, &block)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode block with hash %s from database as: %v", hash, err)
+		return nil, fmt.Errorf("failed to decode block with hash %v from database as: %v", hash, err)
 	}
 	return &block, nil
 }
@@ -213,8 +213,8 @@ func (blockStore *BlockStore) GetTransactionByHash(hash types.Hash) (*types.Tran
 	// read tx look up indexs
 	txLookupIntex, err := blockStore.getEntityLookUpIndex(hash)
 	if err != nil {
-		log.Error("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
-		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", hash, err)
+		log.Error("failed to decode tx lookup index with hash %v from database as: %v", hash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode tx lookup index with hash %v from database as: %v", hash, err)
 	}
 
 	// read block include this tx
@@ -230,19 +230,19 @@ func (blockStore *BlockStore) GetReceiptByTxHash(txHash types.Hash) (*types.Rece
 	// read tx look up indexs
 	txLookupIntex, err := blockStore.getEntityLookUpIndex(txHash)
 	if err != nil {
-		log.Error("failed to get tx lookup index with hash %s from database as: %v", txHash, err)
-		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed get tx lookup index with hash %s from database as: %v", txHash, err)
+		log.Error("failed to get tx lookup index with hash %v from database as: %v", txHash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed get tx lookup index with hash %v from database as: %v", txHash, err)
 	}
 	receiptsByte, err := blockStore.store.Get(append(receiptPrefix, common.HashToBytes(txLookupIntex.BlockHash)...))
 	if err != nil {
-		log.Error("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
-		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to get receipts with block hash %s from database as: %v", txLookupIntex.BlockHash, err)
+		log.Error("failed to get receipts with block hash %v from database as: %v", txLookupIntex.BlockHash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to get receipts with block hash %v from database as: %v", txLookupIntex.BlockHash, err)
 	}
 	var receipts []*types.Receipt
 	err = decodeEntity(receiptsByte, &receipts)
 	if err != nil {
-		log.Error("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
-		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode receipts with block hash %sa, s: %v", txLookupIntex.BlockHash, err)
+		log.Error("failed to decode receipts with block hash %v, s: %v", txLookupIntex.BlockHash, err)
+		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode receipts with block hash %v, s: %v", txLookupIntex.BlockHash, err)
 	}
 	return receipts[txLookupIntex.Index], txLookupIntex.BlockHash, txLookupIntex.BlockHeight, txLookupIntex.Index, nil
 }
@@ -252,12 +252,12 @@ func (blockStore *BlockStore) getEntityLookUpIndex(txHash types.Hash) (*indexes.
 	// read tx look up indexs
 	txLookupIntexByte, err := blockStore.store.Get(append(txPrefix, common.HashToBytes(txHash)...))
 	if txLookupIntexByte == nil || err != nil {
-		return nil, fmt.Errorf("failed to get tx lookup index with hash %s, as: %v", txHash, err)
+		return nil, fmt.Errorf("failed to get tx lookup index with hash %v, as: %v", txHash, err)
 	}
 	var txLookupIntex indexes.EntityLookupIndex
 	err = decodeEntity(txLookupIntexByte, &txLookupIntex)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode tx lookup index with hash %s from database as: %v", txHash, err)
+		return nil, fmt.Errorf("failed to decode tx lookup index with hash %v from database as: %v", txHash, err)
 	}
 	return &txLookupIntex, nil
 }
