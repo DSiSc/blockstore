@@ -1,6 +1,7 @@
 package blockstore
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -100,8 +101,7 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 		batch.Reset()
 		return err
 	}
-	batch.Write()
-	return nil
+	return batch.Write()
 }
 
 // WriteBlock write the block to database. return error if write failed.
@@ -113,7 +113,12 @@ func (blockStore *BlockStore) writeBlockByBatch(batch dbstore.Batch, block *type
 		log.Error("Failed to encode block %v to byte, as: %v ", block, err)
 		return fmt.Errorf("Failed to encode block %v to byte, as: %v ", block, err)
 	}
+
 	blockHash := common.HeaderHash(block)
+	if !bytes.Equal(blockHash[:], block.HeaderHash[:]) {
+		log.Error("Invalid block, as block's hash %x is not same to expected %x ", blockHash, block.HeaderHash)
+		return fmt.Errorf("Invalid block, as block's hash %x is not same to expected %x ", blockHash, block.HeaderHash)
+	}
 	err = batch.Put(append(blockPrefix, common.HashToBytes(blockHash)...), blockByte)
 	if err != nil {
 		log.Error("Failed to write block %x to database, as: %v ", blockHash, err)
@@ -160,8 +165,7 @@ func (blockStore *BlockStore) WriteBlockWithReceipts(block *types.Block, receipt
 		batch.Reset()
 		return err
 	}
-	batch.Write()
-	return nil
+	return batch.Write()
 }
 
 // GetBlockByHash get block by block hash.

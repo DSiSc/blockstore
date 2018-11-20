@@ -36,9 +36,9 @@ func mockBlock() *types.Block {
 		StateRoot: stateHash,
 	}
 	block := &types.Block{
-		Header:     &header,
-		HeaderHash: blockHash,
+		Header: &header,
 	}
+	block.HeaderHash = common.HeaderHash(block)
 	return block
 }
 
