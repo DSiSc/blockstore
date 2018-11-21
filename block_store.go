@@ -294,7 +294,7 @@ func (blockStore *BlockStore) writeTxLookUpIndex(batch dbstore.Batch, blockHash 
 
 // record current block
 func (blockStore *BlockStore) recordCurrentBlock(block *types.Block) {
-	log.Info("Update current block to %v", block)
+	log.Info("Update current block to %x", block.HeaderHash)
 	blockStore.currentBlock.Store(block)
 }
 

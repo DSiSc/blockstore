@@ -161,7 +161,7 @@ func TestBlockStore_LoadLatestBlock(t *testing.T) {
 	err = blockStore.WriteBlock(block)
 	assert.Nil(err)
 
-	blockStore.recordCurrentBlock(nil)
+	blockStore.recordCurrentBlock(block)
 	blockStore.loadLatestBlock()
 	assert.Equal(block, blockStore.GetCurrentBlock())
 }
