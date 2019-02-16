@@ -101,7 +101,15 @@ func (blockStore *BlockStore) WriteBlock(block *types.Block) error {
 		batch.Reset()
 		return err
 	}
-	return batch.Write()
+	err = batch.Write()
+	if err != nil {
+		log.Error("failed to commit block %x to database, as: %v", block.HeaderHash, err)
+		return err
+	}
+
+	// update current block
+	blockStore.recordCurrentBlock(block)
+	return nil
 }
 
 // WriteBlock write the block to database. return error if write failed.
@@ -139,9 +147,6 @@ func (blockStore *BlockStore) writeBlockByBatch(batch dbstore.Batch, block *type
 		return fmt.Errorf("Failed to record the tx lookup index from block %x ", blockHash)
 	}
 
-	// update current block
-	blockStore.recordCurrentBlock(block)
-
 	// update latest block
 	err = batch.Put([]byte(latestBlockKey), common.HashToBytes(blockHash))
 	if err != nil {
@@ -165,7 +170,15 @@ func (blockStore *BlockStore) WriteBlockWithReceipts(block *types.Block, receipt
 		batch.Reset()
 		return err
 	}
-	return batch.Write()
+	err = batch.Write()
+	if err != nil {
+		log.Error("failed to commit block %x to database, as: %v", block.HeaderHash, err)
+		return err
+	}
+
+	// update current block
+	blockStore.recordCurrentBlock(block)
+	return nil
 }
 
 // GetBlockByHash get block by block hash.
@@ -249,6 +262,22 @@ func (blockStore *BlockStore) GetReceiptByTxHash(txHash types.Hash) (*types.Rece
 		return nil, types.Hash{}, 0, 0, fmt.Errorf("failed to decode receipts with block hash %x, s: %v", txLookupIntex.BlockHash, err)
 	}
 	return receipts[txLookupIntex.Index], txLookupIntex.BlockHash, txLookupIntex.BlockHeight, txLookupIntex.Index, nil
+}
+
+// GetReceiptByHash get receipt by relative block's hash
+func (blockStore *BlockStore) GetReceiptByBlockHash(blockHash types.Hash) []*types.Receipt {
+	receiptsByte, err := blockStore.store.Get(append(receiptPrefix, common.HashToBytes(blockHash)...))
+	if err != nil {
+		log.Error("failed to get receipts with block hash %x from database as: %v", blockHash, err)
+		return nil
+	}
+	var receipts []*types.Receipt
+	err = decodeEntity(receiptsByte, &receipts)
+	if err != nil {
+		log.Error("failed to decode receipts with block hash %x, s: %v", blockHash, err)
+		return nil
+	}
+	return receipts
 }
 
 // getEntityLookUpIndex get look up index entity by hash

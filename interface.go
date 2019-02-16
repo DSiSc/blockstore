@@ -30,4 +30,7 @@ type BlockStoreAPI interface {
 
 	// GetReceiptByHash get receipt by relative tx's hash
 	GetReceiptByTxHash(txHash types.Hash) (*types.Receipt, types.Hash, uint64, uint64, error)
+
+	// GetReceiptByHash get receipt by relative block's hash
+	GetReceiptByBlockHash(txHash types.Hash) []*types.Receipt
 }
