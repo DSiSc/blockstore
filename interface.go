@@ -1,11 +1,16 @@
 package blockstore
 
 import (
+	"github.com/DSiSc/blockstore/dbstore"
 	"github.com/DSiSc/craft/types"
 )
 
 // BlockStoreAPI block-store module public api.
 type BlockStoreAPI interface {
+	dbstore.DBPutter
+
+	// Get get from db
+	Get(key []byte) ([]byte, error)
 
 	// WriteBlock write the block to database. return error if write failed.
 	WriteBlock(block *types.Block) error

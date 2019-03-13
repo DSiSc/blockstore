@@ -280,6 +280,16 @@ func (blockStore *BlockStore) GetReceiptByBlockHash(blockHash types.Hash) []*typ
 	return receipts
 }
 
+// Put add a record to database
+func (blockStore *BlockStore) Put(key []byte, value []byte) error {
+	return blockStore.store.Put(key, value)
+}
+
+// Get get a record by key
+func (blockStore *BlockStore) Get(key []byte) ([]byte, error) {
+	return blockStore.store.Get(key)
+}
+
 // getEntityLookUpIndex get look up index entity by hash
 func (blockStore *BlockStore) getEntityLookUpIndex(txHash types.Hash) (*indexes.EntityLookupIndex, error) {
 	// read tx look up indexs

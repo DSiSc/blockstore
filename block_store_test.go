@@ -206,3 +206,19 @@ func TestBlockStore_GetReceiptByTxHash(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(receipts[0], receipt)
 }
+
+// test put/get a record to/from database
+func TestBlockStore_PutGet(t *testing.T) {
+	assert := assert.New(t)
+	blockStore, err := NewBlockStore(mockBlockStoreConfig())
+	assert.Nil(err)
+	assert.NotNil(blockStore)
+	key := []byte("hello")
+	val := []byte("world")
+	err = blockStore.Put(key, val)
+	assert.Nil(err)
+
+	dbVal, err := blockStore.Get(key)
+	assert.Nil(err)
+	assert.Equal(val, dbVal)
+}
