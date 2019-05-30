@@ -222,3 +222,25 @@ func TestBlockStore_PutGet(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(val, dbVal)
 }
+
+// test delete a record to/from database
+func TestBlockStore_Delete(t *testing.T) {
+	assert := assert.New(t)
+	blockStore, err := NewBlockStore(mockBlockStoreConfig())
+	assert.Nil(err)
+	assert.NotNil(blockStore)
+	key := []byte("hello")
+	val := []byte("world")
+	err = blockStore.Put(key, val)
+	assert.Nil(err)
+
+	dbVal, err := blockStore.Get(key)
+	assert.Nil(err)
+	assert.Equal(val, dbVal)
+
+	err = blockStore.Delete(key)
+	assert.Nil(err)
+
+	_, err = blockStore.Get(key)
+	assert.NotNil(err)
+}

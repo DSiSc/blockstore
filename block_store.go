@@ -290,6 +290,11 @@ func (blockStore *BlockStore) Get(key []byte) ([]byte, error) {
 	return blockStore.store.Get(key)
 }
 
+// Delete removes the key from the key-value data store.
+func (blockStore *BlockStore) Delete(key []byte) error {
+	return blockStore.store.Delete(key)
+}
+
 // getEntityLookUpIndex get look up index entity by hash
 func (blockStore *BlockStore) getEntityLookUpIndex(txHash types.Hash) (*indexes.EntityLookupIndex, error) {
 	// read tx look up indexs

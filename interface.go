@@ -38,4 +38,7 @@ type BlockStoreAPI interface {
 
 	// GetReceiptByHash get receipt by relative block's hash
 	GetReceiptByBlockHash(txHash types.Hash) []*types.Receipt
+
+	// Delete removes the key from the key-value data store.
+	Delete(key []byte) error
 }
